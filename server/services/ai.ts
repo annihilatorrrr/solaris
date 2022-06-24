@@ -343,7 +343,7 @@ export default class AIService {
 
         const diplomacy = this._initDiplomacyState(game, player);
 
-        const traversableStars = game.galaxy.stars.filter(star => !star.ownedByPlayerId || star.ownedByPlayerId.toString() === playerId);
+        const traversableStars = game.galaxy.stars.filter(star => this._isFriendlyStar(player, diplomacy, star));
         // All stars (belonging to anyone) that can be reached directly from a player star
         const allReachableFromPlayerStars = this._computeStarGraph(starsById, game, player, playerStars, game.galaxy.stars, this._getHyperspaceRangeExternal(game, player));
         // All stars (belonging to anyone) that can reach a player star (with our players range)
@@ -1316,5 +1316,13 @@ export default class AIService {
             friendlyPlayers,
             neutralPlayers
         }
+    }
+
+    _isFriendlyStar(player: Player, diplomacy: DiplomacyState, star: Star): boolean {
+        return !star.ownedByPlayerId || star.ownedByPlayerId === player._id || this._isFriendlyPlayer(diplomacy, star.ownedByPlayerId);
+    }
+
+    _isFriendlyPlayer(diplomacy: DiplomacyState, ownedByPlayerId: DBObjectId): boolean {
+        return diplomacy.friendlyPlayers.has(ownedByPlayerId);
     }
 };
