@@ -127,6 +127,10 @@ interface FoundAssignment {
     trace: TracePoint[];
 }
 
+type AssignmentNextFilter = (trace: TracePoint[], nextStarId: string) => boolean;
+
+type AssignmentFilter = (assignment: Assignment) => boolean;
+
 // IMPORTANT IMPLEMENTATION NOTES
 // During AI tick, care must be taken to NEVER write any changes to the database.
 // This is performed automatically by mongoose (when calling game.save()).
@@ -855,12 +859,6 @@ export default class AIService {
         }
     }
 
-    _filterAssignmentByCarrierPurchase(assignment: Assignment, allowCarrierPurchase: boolean) {
-        const hasCarriers = assignment.carriers && assignment.carriers.length > 0;
-
-        return allowCarrierPurchase || hasCarriers;
-    }
-
     _calculateTravelDistance(star1: Star, star2: Star): number {
         if (this.starService.isStarPairWormHole(star1, star2)) {
             return 0;
@@ -895,23 +893,11 @@ export default class AIService {
         return Math.ceil(entireDistance / distancePerTick);
     }
 
-    _findAssignmentsWithTickLimit(game: Game, player: Player, context: Context, starGraph: StarGraph, assignments: Map<string, Assignment>, destinationId: string, ticksLimit: number, allowCarrierPurchase: boolean, onlyOne = false, filterNext: ((trace: TracePoint[], nextStarId: string) => boolean) | null = null): FoundAssignment[] {
-        const nextFilter = (trace: TracePoint[], nextStarId: string) => {
-            const entireTrace = trace.concat([{starId: nextStarId}]);
-            const ticksRequired = this._calculateTraceDuration(context, game, entireTrace);
-            const withinLimit = ticksRequired <= ticksLimit;
-
-            if (filterNext) {
-                return withinLimit && filterNext(trace, nextStarId);
-            }
-
-            return withinLimit;
-        }
-
+    _findAssignments(context: Context, game: Game, player: Player, starGraph: StarGraph, assignments: Map<string, Assignment>, destinationId: string, nextFilter: AssignmentNextFilter, assignmentFilter: AssignmentFilter, onlyOne: boolean = false): FoundAssignment[] {
         const fittingAssignments: FoundAssignment[] = [];
 
         const onAssignment = (assignment: Assignment, trace: TracePoint[]) => {
-            if (this._filterAssignmentByCarrierPurchase(assignment, allowCarrierPurchase)) {
+            if (assignmentFilter(assignment)) {
                 fittingAssignments.push({
                     assignment,
                     trace
@@ -924,6 +910,37 @@ export default class AIService {
         this._searchAssignments(context, starGraph, assignments, nextFilter, onAssignment, destinationId)
 
         return fittingAssignments;
+    }
+
+    _findAssignmentsWithTickLimit(game: Game, player: Player, context: Context, starGraph: StarGraph, assignments: Map<string, Assignment>, destinationId: string, ticksLimit: number, allowCarrierPurchase: boolean, onlyOne = false, filterNext: ((trace: TracePoint[], nextStarId: string) => boolean) | null = null): FoundAssignment[] {
+        return this._findAssignments(context, game, player, starGraph, assignments, destinationId, this._filterTraceByTickLimit(context, game, ticksLimit, this._filterTraceNone()), this._filterAssignmentByCarrierPurchase(allowCarrierPurchase, this._filterAssignmentNone()), onlyOne);
+    }
+
+    _filterTraceNone(): AssignmentNextFilter {
+        return (trace, nextStarId) => true;
+    }
+
+    _filterAssignmentNone(): AssignmentFilter {
+        return (assignment) => true;
+    }
+
+    _filterTraceByTickLimit(context: Context, game: Game, ticksLimit: number, filterNext: AssignmentNextFilter): AssignmentNextFilter {
+        return (trace, nextStarId) => {
+            const entireTrace = trace.concat([{starId: nextStarId}]);
+            const ticksRequired = this._calculateTraceDuration(context, game, entireTrace);
+            const withinLimit = ticksRequired <= ticksLimit;
+
+            return withinLimit && filterNext(trace, nextStarId);
+        }
+    }
+
+    _filterAssignmentByCarrierPurchase(allowCarrierPurchase: boolean, filterNext: AssignmentFilter): AssignmentFilter {
+        return (assignment) => {
+            const hasCarriers = assignment.carriers && assignment.carriers.length > 0;
+            const isOk = allowCarrierPurchase || hasCarriers;
+
+            return isOk && filterNext(assignment);
+        }
     }
 
     _createDefaultAttackData(game: Game, starId: string, ticksUntil: number): KnownAttack {
