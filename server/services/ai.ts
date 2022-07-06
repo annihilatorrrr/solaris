@@ -37,6 +37,8 @@ const INVASION_ATTACK_FACTOR = 1.5;
 
 const BORDER_STAR_ANGLE_THRESHOLD_DEGREES = 120;
 
+const NEUTRAL_PLAYER_MIN_REPUTATION = 2;
+
 enum AiAction {
     DefendStar,
     ClaimStar,
@@ -380,7 +382,7 @@ export default class AIService {
 
         // Enemy carriers that are in transition to one of our stars
         const incomingCarriers = game.galaxy.carriers
-            .filter(carrier => this._isEnemyPlayer(diplomacy, carrier.ownedByPlayerId!) && carrier.orbiting == null)
+            .filter(carrier => this._isEnemyPlayer(player, diplomacy, this.playerService.getById(game, carrier.ownedByPlayerId!)!) && carrier.orbiting == null)
             .map(carrier => {
                 const waypoint = carrier.waypoints[0];
                 const destinationId = waypoint.destination;
@@ -466,7 +468,7 @@ export default class AIService {
             if (otherStar.ownedByPlayerId && otherStar.ownedByPlayerId !== player._id) {
                 otherPlayersBordering.add(otherStar.ownedByPlayerId);
 
-                hasHostileBorder = this._isEnemyPlayer(diplomacy, otherStar.ownedByPlayerId);
+                hasHostileBorder = this._isEnemyPlayer(player, diplomacy, this.playerService.getById(game, otherStar.ownedByPlayerId)!);
             }
         }
 
@@ -1041,13 +1043,14 @@ export default class AIService {
         return defenseOrders.concat(invasionOrders, expansionOrders, movementOrders);
     }
 
-    _isEnemyPlayer(diplomacy: DiplomacyState, otherPlayerId: DBObjectId): boolean {
-        return diplomacy.hostilePlayers.has(otherPlayerId);
+    _isEnemyPlayer(player: Player, diplomacy: DiplomacyState, otherPlayer: Player): boolean {
+        return diplomacy.hostilePlayers.has(otherPlayer._id)
+            || this.reputationService.getReputation(player, otherPlayer).reputation.score < NEUTRAL_PLAYER_MIN_REPUTATION;
     }
 
     _isEnemyStar(game: Game, player: Player, context: Context, star: Star): boolean {
         if (star.ownedByPlayerId) {
-            return this._isEnemyPlayer(context.diplomacy, star.ownedByPlayerId);
+            return this._isEnemyPlayer(player, context.diplomacy, this.playerService.getById(game, star.ownedByPlayerId)!);
         }
 
         return false;
