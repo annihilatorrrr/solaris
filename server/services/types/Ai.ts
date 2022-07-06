@@ -1,18 +1,16 @@
-import {DBObjectId} from "./DBObjectId";
-
 export interface KnownAttack {
     arrivalTick: number;
-    starId: DBObjectId;
-    carriersOnTheWay: DBObjectId[];
+    starId: string;
+    carriersOnTheWay: string[];
 }
 
 export interface InvasionInProgress {
     arrivalTick: number;
-    star: DBObjectId;
+    star: string;
 }
 
 export interface AiState {
     knownAttacks: KnownAttack[];
     invasionsInProgress: InvasionInProgress[];
-    startedClaims: DBObjectId[];
+    startedClaims: string[];
 }
