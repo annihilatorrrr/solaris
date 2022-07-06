@@ -38,7 +38,3 @@ export function minBy<T>(min: (T) => number, list: T[]): number {
 export function reverseSort<A>(sorter: (a: A, b: A) => number): (a: A, b: A) => number {
     return (a, b) => sorter(b, a);
 }
-
-export function notNull<T>(val: T | null): val is T {
-    return val !== null;
-}

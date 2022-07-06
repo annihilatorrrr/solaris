@@ -12,7 +12,7 @@ import TechnologyService from "./technology";
 import WaypointService from "./waypoint";
 import {Star} from "./types/Star";
 import {Carrier} from "./types/Carrier";
-import {getOrInsert, maxBy, minBy, notNull, reverseSort} from "./utils";
+import {getOrInsert, maxBy, minBy, reverseSort} from "./utils";
 import {CarrierWaypoint, CarrierWaypointActionType} from "./types/CarrierWaypoint";
 import ReputationService from "./reputation";
 import DiplomacyService from "./diplomacy";
@@ -382,22 +382,21 @@ export default class AIService {
 
         // Enemy carriers that are in transition to one of our stars
         const incomingCarriers = game.galaxy.carriers
-            .filter(carrier => this._isEnemyPlayer(player, diplomacy, this.playerService.getById(game, carrier.ownedByPlayerId!)!) && carrier.orbiting == null)
-            .map(carrier => {
+            .filter(carrier => this._isPotentiallyHostile(player, diplomacy, this.playerService.getById(game, carrier.ownedByPlayerId!)!) && carrier.orbiting === null)
+            .flatMap(carrier => {
                 const waypoint = carrier.waypoints[0];
                 const destinationId = waypoint.destination;
                 const destinationStar = starsById.get(destinationId.toString())!;
 
                 if (destinationStar.ownedByPlayerId && destinationStar.ownedByPlayerId.toString() === playerId) {
-                    return {
+                    return [{
                         carrier,
                         waypoint
-                    };
+                    }];
                 }
 
-                return null;
-            })
-            .filter(notNull);
+                return [];
+            });
 
         const attacksByStarId = new Map<string, Map<number, Carrier[]>>();
         const attackedStarIds = new Set<string>();
@@ -1042,6 +1041,10 @@ export default class AIService {
         const movementOrders = this._gatherMovementOrders(game, player, context);
 
         return defenseOrders.concat(invasionOrders, expansionOrders, movementOrders);
+    }
+
+    _isPotentiallyHostile(player: Player, diplomacy: DiplomacyState, otherPlayer: Player): boolean {
+        return diplomacy.hostilePlayers.has(otherPlayer._id) || diplomacy.neutralPlayers.has(otherPlayer._id);
     }
 
     _isEnemyPlayer(player: Player, diplomacy: DiplomacyState, otherPlayer: Player): boolean {
