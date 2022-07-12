@@ -2,6 +2,8 @@ const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
 const Types = Schema.Types;
 
+import SettingsSchema from './gameCreateSettings'
+
 const schema = new Schema({
     username: { type: Types.String, required: true },
     guildId: { type: Types.ObjectId, default: null },
@@ -185,7 +187,15 @@ const schema = new Schema({
             playerRenownReceived: { type: Types.Boolean, required: false, default: true },
             conversationMessageSent: { type: Types.Boolean, required: false, default: true }
         }
+    },
+    savedSettings: {
+        type: [{ type: Types.ObjectId, required: false, ref: SettingsSchema }],
+        validate: [arrayLimit, 'user.savedSettings has more than 4 entries.']
     }
 });
+
+function arrayLimit(val) {
+    return val.length <= 10;
+}
 
 export default schema;
