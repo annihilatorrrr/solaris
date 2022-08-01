@@ -14,7 +14,7 @@ import GameTypeService from './gameType';
 import UserGuildService from './guildUser';
 import HistoryService from './history';
 import MapService from './map';
-import OrbitalMechanicsService from './orbitalMechanics';
+import StarMovementService from './starMovement';
 import PlayerService from './player';
 import ReputationService from './reputation';
 import ResearchService from './research';
@@ -51,7 +51,7 @@ export default class GameGalaxyService {
     guildUserService: UserGuildService;
     historyService: HistoryService;
     battleRoyaleService: BattleRoyaleService;
-    orbitalMechanicsService: OrbitalMechanicsService;
+    starMovementService: StarMovementService;
     gameTypeService: GameTypeService;
     gameStateService: GameStateService;
     diplomacyService: DiplomacyService;
@@ -78,7 +78,7 @@ export default class GameGalaxyService {
         guildUserService: UserGuildService,
         historyService: HistoryService,
         battleRoyaleService: BattleRoyaleService,
-        orbitalMechanicsService: OrbitalMechanicsService,
+        starMovementService: StarMovementService,
         gameTypeService: GameTypeService,
         gameStateService: GameStateService,
         diplomacyService: DiplomacyService,
@@ -104,7 +104,7 @@ export default class GameGalaxyService {
         this.guildUserService = guildUserService;
         this.historyService = historyService;
         this.battleRoyaleService = battleRoyaleService;
-        this.orbitalMechanicsService = orbitalMechanicsService;
+        this.starMovementService = starMovementService;
         this.gameTypeService = gameTypeService;
         this.gameStateService = gameStateService;
         this.diplomacyService = diplomacyService;
@@ -148,9 +148,13 @@ export default class GameGalaxyService {
         // Check if the user is playing in this game.
         let userPlayer = this._getUserPlayer(game, userId);
 
+        // If the user is a spectator then they are allowed to see the entire galaxy.
+        const isSpectator = userPlayer == null && game.spectators!.find(s => s.toString() === userId!.toString()) != null;
+
         // Remove who created the game.
         delete game.settings.general.createdByUserId;
         delete game.settings.general.password; // Don't really need to explain why this is removed.
+        delete game.spectators; // Don't want to pass back user ids of spectators
 
         await this._maskGalaxy(game, userPlayer, isHistorical, tick);
 
@@ -164,24 +168,25 @@ export default class GameGalaxyService {
             this._appendStarsPendingDestructionFlag(game);
         }
 
-        // if the user isn't playing this game, then only return
-        // basic data about the stars, exclude any important info like ships.
-        // If the game has finished then everyone should be able to view the full game.
-        if (!userPlayer && !this.gameStateService.isFinished(game)) {
-            this._setStarInfoBasic(game);
+        if (!isSpectator) {
+            // if the user isn't playing this game, then only return
+            // basic data about the stars, exclude any important info like ships.
+            // If the game has finished then everyone should be able to view the full game.
+            if (!userPlayer && !this.gameStateService.isFinished(game)) {
+                this._setStarInfoBasic(game);
 
-            // Also remove all carriers from players.
-            this._clearPlayerCarriers(game);
-
-            // We still need to filter the player data so that it's basic info.
-            await this._setPlayerInfoBasic(game, null);
-        } else {
-            // Populate the rest of the details about stars,
-            // carriers and players providing that they are in scanning range.
-            this._setCarrierInfoDetailed(game, userPlayer!);
-            this._setStarInfoDetailed(game, userPlayer!);
-            await this._setPlayerInfoBasic(game, userPlayer!);
+                // Also remove all carriers from players.
+                this._clearPlayerCarriers(game);
+            } else {
+                // Populate the rest of the details about stars,
+                // carriers and players providing that they are in scanning range.
+                this._setCarrierInfoDetailed(game, userPlayer!);
+                this._setStarInfoDetailed(game, userPlayer!);
+            }
         }
+
+        // We need to filter the player data so that it's basic info.
+        await this._setPlayerInfoBasic(game, userPlayer);
 
         // For extra dark mode games, overwrite the player stats as by this stage
         // scanning range will have kicked in and filtered out stars and carriers the player
@@ -356,7 +361,7 @@ export default class GameGalaxyService {
                 s.naturalResources = this.starService.calculateActualNaturalResources(s);
 
                 if (isOrbital) {
-                    s.locationNext = this.orbitalMechanicsService.getNextLocation(doc, s);
+                    s.locationNext = this.starMovementService.getNextLocation(doc, s);
                 }
 
                 // If the star is dead then it has no infrastructure.
@@ -456,7 +461,7 @@ export default class GameGalaxyService {
                 }
 
                 if (isOrbital) {
-                    c.locationNext = this.orbitalMechanicsService.getNextLocation(doc, c);
+                    c.locationNext = this.starMovementService.getNextLocation(doc, c);
                 }
             });
     }

@@ -10,6 +10,10 @@ export default class GameTypeService {
         return game.settings.general.type === 'tutorial';
     }
 
+    isOfficialGame(game: Game) {
+        return game.settings.general.createdByUserId == null;
+    }
+
     isCustomGame(game: Game) {
         return game.settings.general.type === 'custom';
     }
@@ -31,8 +35,8 @@ export default class GameTypeService {
         ].includes(game.settings.general.type);
     }
 
-    is32PlayerOfficialGame(game: Game) {
-        return game.settings.general.type === '32_player_rt';
+    is32PlayerGame(game: Game) {
+        return game.settings.general.playerLimit === 32;
     }
 
     isConquestMode(game: Game) {

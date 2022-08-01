@@ -16,7 +16,6 @@ import ConversationService from "../conversation";
 import DiplomacyService from "../diplomacy";
 import DiplomacyUpkeepService from "../diplomacyUpkeep";
 import DistanceService from "../distance";
-import DonateService from "../donate";
 import EmailService from "../email";
 import EventService from "../event";
 import GameService from "../game";
@@ -36,7 +35,7 @@ import LeaderboardService from "../leaderboard";
 import LedgerService from "../ledger";
 import MapService from "../map";
 import NameService from "../name";
-import OrbitalMechanicsService from "../orbitalMechanics";
+import StarMovementService from "../starMovement";
 import PasswordService from "../password";
 import PaypalService from "../paypal";
 import PlayerService from "../player";
@@ -115,11 +114,10 @@ export interface DependencyContainer {
     basicAiService: BasicAIService,
     aiService: AIService,
     battleRoyaleService: BattleRoyaleService,
-    orbitalMechanicsService: OrbitalMechanicsService,
+    starMovementService: StarMovementService,
     cacheService: CacheService,
     recaptchaService: RecaptchaService,
     ratingService: RatingService,
-    donateService: DonateService,
     diplomacyService: DiplomacyService,
     avatarService: AvatarService,
     paypalService: PaypalService,

@@ -200,6 +200,7 @@ export interface GameUserNotification {
 	turnWaiting: boolean | null;
 	defeated: boolean | null;
 	afk: boolean | null;
+	position: number | null;
 };
 
 export interface Game {
@@ -288,6 +289,7 @@ export interface Game {
 	},
 	quitters: DBObjectId[],
 	afkers: DBObjectId[],
+	spectators?: DBObjectId[],
 	userNotifications?: GameUserNotification;
 
 	save(): Promise<Game>;
